@@ -1,0 +1,5 @@
+vendor/
+.vscode
+
+debug
+go-dns
