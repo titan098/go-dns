@@ -6,33 +6,31 @@ import (
 	"strconv"
 	"strings"
 
+	"bitbucket.org/titan098/go-dns/config"
 	"bitbucket.org/titan098/go-dns/logging"
 	"github.com/miekg/dns"
 )
 
 var log = logging.SetupLogging("dns")
 
-var prefix = "2001:470:1f23:ff::"
-var mask = 64
-var domain = "ipv6.ellefsen.za.net."
-
 type DNSServer struct {
-	dns  *dns.Server
-	port int
+	dns      *dns.Server
+	protocol string
+	port     int
 }
 
-func (d *DNSServer) getNameForIPv6(name string) string {
-	p := IPv6ToNibble(net.ParseIP(prefix), mask)
+func (d *DNSServer) getNameForIPv6(name string, prefix *config.Domain) string {
+	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
 	digits := strings.TrimSuffix(name, "."+p)
 	strippedDigits := reverse(strings.Join(strings.Split(digits, "."), ""))
-	return strippedDigits + "." + domain
+	return strippedDigits + "." + prefix.Domain + "."
 }
 
-func (d *DNSServer) getIPv6ForName(name string) string {
-	p := IPv6ToNibble(net.ParseIP(prefix), mask)
+func (d *DNSServer) getIPv6ForName(name string, prefix *config.Domain) string {
+	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
 
-	digits := strings.TrimSuffix(name, "."+domain)
-	joinedDigits := reverse(strings.Join(strings.Split(digits, ""), ".")) + p
+	digits := strings.TrimSuffix(name, "."+prefix.Domain+".")
+	joinedDigits := reverse(strings.Join(strings.Split(digits, ""), ".")) + "." + p
 	return NibbleToIPv6(joinedDigits).String()
 }
 
@@ -45,51 +43,84 @@ func (d *DNSServer) appendAnswer(m *dns.Msg, answer string) {
 	m.Answer = append(m.Answer, rr)
 }
 
-func (d *DNSServer) parseQuery(m *dns.Msg) {
+func (d *DNSServer) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.Soa, ns *config.Ns) {
 	for _, q := range m.Question {
-		log.Debugf("query %d %s", q.Qtype, q.Name)
+		log.Debugf("query (%d): '%s'", m.Id, q.String())
 		switch q.Qtype {
 		case dns.TypeSOA:
 			// manage SOA requests
-			answer := fmt.Sprintf("%s 300 IN SOA d.ellefsen.za.net d.ellefsen.za.net 1 10800 3600 1209600 300", domain)
-			d.appendAnswer(m, answer)
+			d.appendAnswer(m, soa.String(prefix.Domain))
+
+		case dns.TypeNS:
+			//manage NS requests
+			if q.Name != prefix.Domain {
+				// if we are querying the NS for a host then we know nothing,
+				// return the SOA record for the delegated domain.
+				answer := soa.String(prefix.Domain)
+				d.appendAnswer(m, answer)
+			} else {
+				// return the nameservers for this domain
+				for _, ns := range ns.Servers {
+					answer := fmt.Sprintf("%s NS %s", q.Name, ns)
+					d.appendAnswer(m, answer)
+				}
+			}
 
 		case dns.TypeAAAA:
 			// manage the forward lookup
-			address := d.getIPv6ForName(q.Name)
+			address := d.getIPv6ForName(q.Name, prefix)
 			answer := fmt.Sprintf("%s AAAA %s", q.Name, address)
-			log.Debugf("answer %s", answer)
 			d.appendAnswer(m, answer)
 
 		case dns.TypePTR:
 			// manage the reverse lookup
-			domain := d.getNameForIPv6(q.Name)
+			domain := d.getNameForIPv6(q.Name, prefix)
 			answer := fmt.Sprintf("%s PTR %s", q.Name, domain)
-			log.Debugf("answer %s", answer)
 			d.appendAnswer(m, answer)
 		}
 	}
+
+	//show the answers
+	for _, answer := range m.Answer {
+		log.Debugf("answer (%d): '%s'", m.Id, answer.String())
+	}
 }
 
-func (d *DNSServer) handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
-	m := new(dns.Msg)
-	m.SetReply(r)
-	m.Compress = false
+func (d *DNSServer) generateHandleDNSRequest(domain string, prefix *config.Domain, soa *config.Soa, ns *config.Ns) (string, func(w dns.ResponseWriter, r *dns.Msg)) {
+	log.Infof("creating handler for %s", domain)
+	return domain, func(w dns.ResponseWriter, r *dns.Msg) {
+		m := new(dns.Msg)
+		m.SetReply(r)
+		m.Compress = false
 
-	switch r.Opcode {
-	case dns.OpcodeQuery:
-		d.parseQuery(m)
+		switch r.Opcode {
+		case dns.OpcodeQuery:
+			d.parseQuery(m, prefix, soa, ns)
+		}
+
+		w.WriteMsg(m)
 	}
-
-	w.WriteMsg(m)
 }
 
 func (d *DNSServer) Start(quit chan struct{}) error {
 	// start the DNS sever
-	log.Infof("starting dns server on :%d", d.port)
+	log.Infof("starting dns server on :%d (%s)", d.port, d.protocol)
+	d.dns = &dns.Server{Addr: ":" + strconv.Itoa(d.port), Net: d.protocol}
 
-	dns.HandleFunc("ipv6.ellefsen.za.net.", d.handleDNSRequest)
-	dns.HandleFunc("f.f.0.0.3.2.f.1.0.7.4.0.1.0.0.2.ip6.arpa.", d.handleDNSRequest)
+	dnsConfig := config.GetConfig().DNS
+	domains := config.GetConfig().Domains
+
+	for domain, domainPrefix := range domains {
+		reverse := IPv6ToNibble(net.ParseIP(domainPrefix.Prefix), domainPrefix.Mask)
+		forwardDomainPrefix := domainPrefix
+		reverseDomainPrefix := domainPrefix
+
+		forwardDomainPrefix.Domain = domain
+		reverseDomainPrefix.Domain = reverse
+
+		dns.HandleFunc(d.generateHandleDNSRequest(domain, &forwardDomainPrefix, &dnsConfig.Soa, &dnsConfig.Ns))
+		dns.HandleFunc(d.generateHandleDNSRequest(reverse, &reverseDomainPrefix, &dnsConfig.Soa, &dnsConfig.Ns))
+	}
 
 	err := d.dns.ListenAndServe()
 	if err != nil {
@@ -105,16 +136,14 @@ func (d *DNSServer) Close() {
 }
 
 func StartServer(quit chan struct{}) *DNSServer {
-	port := 15353
-	proto := "udp"
+	c := config.GetConfig()
 
-	p := net.ParseIP(prefix)
-	log.Info(NibbleToIPv6("f.f.0.0.3.2.f.1.0.7.4.0.1.0.0.2.ip6.arpa."))
-	log.Info(IPv6ToNibble(p, mask))
-
+	port := c.DNS.Port
+	protocol := c.DNS.Protocol
 	srv := &DNSServer{
-		port: port,
-		dns:  &dns.Server{Addr: ":" + strconv.Itoa(port), Net: proto}}
+		port:     port,
+		protocol: protocol,
+	}
 	go srv.Start(quit)
 
 	return srv

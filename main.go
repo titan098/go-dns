@@ -21,8 +21,7 @@ func main() {
 	log.Info("starting up...")
 	quit := make(chan struct{})
 
-	conf, _ := config.Load("config.toml")
-	log.Info(conf)
+	config.Load("config.toml")
 
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

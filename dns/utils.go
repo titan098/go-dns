@@ -34,7 +34,7 @@ func NibbleToIPv6(nibble string) net.IP {
 func IPv6ToNibble(ip net.IP, prefix int) string {
 	encodedBytes := hex.EncodeToString(ip)
 	if prefix <= 128 {
-		mask = (128 - prefix) / 4
+		mask := (128 - prefix) / 4
 		encodedBytes = encodedBytes[0 : len(encodedBytes)-mask]
 	}
 
