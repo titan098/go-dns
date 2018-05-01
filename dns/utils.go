@@ -33,7 +33,10 @@ func NibbleToIPv6(nibble string) net.IP {
 // IPv6ToNibble converts an IPv6 address to a bind nibble.
 func IPv6ToNibble(ip net.IP, prefix int) string {
 	encodedBytes := hex.EncodeToString(ip)
-	encodedBytes = encodedBytes[0:((128 - prefix) / 4)]
+	if prefix <= 128 {
+		mask = (128 - prefix) / 4
+		encodedBytes = encodedBytes[0 : len(encodedBytes)-mask]
+	}
 
 	b := reverse(strings.Join(strings.Split(encodedBytes, ""), "."))
 	b += ".ip6.arpa."
