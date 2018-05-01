@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"bitbucket.org/titan098/go-dns/config"
 	"bitbucket.org/titan098/go-dns/dns"
 	"bitbucket.org/titan098/go-dns/logging"
 )
@@ -19,6 +20,9 @@ func cleanup(quit chan struct{}) {
 func main() {
 	log.Info("starting up...")
 	quit := make(chan struct{})
+
+	conf, _ := config.Load("config.toml")
+	log.Info(conf)
 
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

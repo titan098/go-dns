@@ -8,6 +8,12 @@
   version = "v1.0.5"
 
 [[projects]]
+  name = "github.com/pelletier/go-toml"
+  packages = ["."]
+  revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
@@ -47,6 +53,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d49c940729dff1e83e592dd328f042770056a917ac5b26c6f69c85e985938ee6"
+  inputs-digest = "a57bb441cb878545f1f07456deb8c43848c5f051c236a28b2bf286de950a7fca"
   solver-name = "gps-cdcl"
   solver-version = 1

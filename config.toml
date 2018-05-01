@@ -1,0 +1,20 @@
+[soa]
+ttl = 300
+refresh = 3600
+retry = 1800
+expire = 10800
+minimum = 300
+mname = "david.ellefsen.za.net"
+rname = "david.ellefsen.za.net"
+
+[ns]
+servers = ["worldlyportal.ellefsen.za.net"]
+
+[domains]
+    [domains."ipv6.ellefsen.za.net"]
+    prefix = "2001:470:1f23:ff::"
+    mask = 64
+    [domains."ipv61.ellefsen.za.net"]
+    prefix = "2001:470:1f23:ff::"
+    mask = 64
+
