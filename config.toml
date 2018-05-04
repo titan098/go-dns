@@ -12,10 +12,10 @@ protocol = "udp"
     rname = "david.ellefsen.za.net"
 
     [dns.ns]
-    servers = ["worldlyportal.ellefsen.za.net"]
+    servers = ["ns-ipv6.ellefsen.ninja"]
 
 [domains]
-    [domains."ipv6.ellefsen.za.net"]
+    [domains."ipv6.ellefsen.ninja"]
     prefix = "2001:470:1f23:ff::"
     mask = 64
 

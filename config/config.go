@@ -11,9 +11,10 @@ import (
 var log = logging.SetupLogging("config")
 
 type Domain struct {
-	Domain string
-	Prefix string `toml:"prefix"`
-	Mask   int    `toml:"mask"`
+	Domain        string
+	ReverseDomain string
+	Prefix        string `toml:"prefix"`
+	Mask          int    `toml:"mask"`
 }
 
 type Soa struct {

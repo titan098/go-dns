@@ -1,4 +1,4 @@
-FROM golang
+FROM arm32v7/golang
 
 WORKDIR /go/src/bitbucket.org/titan098/go-dns/
 COPY . .

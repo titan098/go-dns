@@ -23,7 +23,7 @@ func (d *DNSServer) getNameForIPv6(name string, prefix *config.Domain) string {
 	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
 	digits := strings.TrimSuffix(name, "."+p)
 	strippedDigits := reverse(strings.Join(strings.Split(digits, "."), ""))
-	return strippedDigits + "." + prefix.Domain + "."
+	return strippedDigits + "." + prefix.ReverseDomain + "."
 }
 
 func (d *DNSServer) getIPv6ForName(name string, prefix *config.Domain) string {
@@ -116,7 +116,9 @@ func (d *DNSServer) Start(quit chan struct{}) error {
 		reverseDomainPrefix := domainPrefix
 
 		forwardDomainPrefix.Domain = domain
+		forwardDomainPrefix.ReverseDomain = reverse
 		reverseDomainPrefix.Domain = reverse
+		reverseDomainPrefix.ReverseDomain = domain
 
 		dns.HandleFunc(d.generateHandleDNSRequest(domain, &forwardDomainPrefix, &dnsConfig.Soa, &dnsConfig.Ns))
 		dns.HandleFunc(d.generateHandleDNSRequest(reverse, &reverseDomainPrefix, &dnsConfig.Soa, &dnsConfig.Ns))
