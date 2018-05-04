@@ -1,0 +1,19 @@
+version: '2.2'
+services:
+  dns:
+    build: .
+    ports:
+      - 53/udp
+    restart: always
+    networks:
+      dns_net:
+        ipv6_address: 2001:470:1f23:ff:53::53
+
+networks:
+  dns_net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: "2001:470:1f23:ff:53::/80"
