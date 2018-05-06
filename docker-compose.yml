@@ -3,7 +3,7 @@ services:
   dns:
     build: .
     ports:
-      - 53/udp
+      - 15353:53/udp
     restart: always
     networks:
       dns_net:

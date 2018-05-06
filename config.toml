@@ -8,8 +8,8 @@ protocol = "udp"
     retry = 1800
     expire = 10800
     minimum = 300
-    mname = "david.ellefsen.za.net"
-    rname = "david.ellefsen.za.net"
+    mname = "dns.ellefsen.ninja"
+    rname = "dns.ellefsen.ninja"
 
     [dns.ns]
     servers = ["ns-ipv6.ellefsen.ninja"]

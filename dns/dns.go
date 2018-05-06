@@ -13,20 +13,22 @@ import (
 
 var log = logging.SetupLogging("dns")
 
-type DNSServer struct {
+// Server is the top-level structure containing a reference to the
+// dns server that was constructed
+type Server struct {
 	dns      *dns.Server
 	protocol string
 	port     int
 }
 
-func (d *DNSServer) getNameForIPv6(name string, prefix *config.Domain) string {
+func (d *Server) getNameForIPv6(name string, prefix *config.Domain) string {
 	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
 	digits := strings.TrimSuffix(name, "."+p)
 	strippedDigits := reverse(strings.Join(strings.Split(digits, "."), ""))
 	return strippedDigits + "." + prefix.ReverseDomain + "."
 }
 
-func (d *DNSServer) getIPv6ForName(name string, prefix *config.Domain) string {
+func (d *Server) getIPv6ForName(name string, prefix *config.Domain) string {
 	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
 
 	digits := strings.TrimSuffix(name, "."+prefix.Domain+".")
@@ -34,7 +36,7 @@ func (d *DNSServer) getIPv6ForName(name string, prefix *config.Domain) string {
 	return NibbleToIPv6(joinedDigits).String()
 }
 
-func (d *DNSServer) appendAnswer(m *dns.Msg, answer string) {
+func (d *Server) appendAnswer(m *dns.Msg, answer string) {
 	//send the answer
 	rr, err := dns.NewRR(answer)
 	if err != nil {
@@ -43,7 +45,7 @@ func (d *DNSServer) appendAnswer(m *dns.Msg, answer string) {
 	m.Answer = append(m.Answer, rr)
 }
 
-func (d *DNSServer) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.Soa, ns *config.Ns) {
+func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.Soa, ns *config.Ns) {
 	for _, q := range m.Question {
 		log.Debugf("query (%d): '%s'", m.Id, q.String())
 		switch q.Qtype {
@@ -66,8 +68,9 @@ func (d *DNSServer) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.So
 				}
 			}
 
+		case dns.TypeANY:
 		case dns.TypeAAAA:
-			// manage the forward lookup
+			// manage the forward lookup, respond for ANY as well
 			address := d.getIPv6ForName(q.Name, prefix)
 			answer := fmt.Sprintf("%s AAAA %s", q.Name, address)
 			d.appendAnswer(m, answer)
@@ -86,7 +89,7 @@ func (d *DNSServer) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.So
 	}
 }
 
-func (d *DNSServer) generateHandleDNSRequest(domain string, prefix *config.Domain, soa *config.Soa, ns *config.Ns) (string, func(w dns.ResponseWriter, r *dns.Msg)) {
+func (d *Server) generateHandleDNSRequest(domain string, prefix *config.Domain, soa *config.Soa, ns *config.Ns) (string, func(w dns.ResponseWriter, r *dns.Msg)) {
 	log.Infof("creating handler for %s", domain)
 	return domain, func(w dns.ResponseWriter, r *dns.Msg) {
 		m := new(dns.Msg)
@@ -102,7 +105,9 @@ func (d *DNSServer) generateHandleDNSRequest(domain string, prefix *config.Domai
 	}
 }
 
-func (d *DNSServer) Start(quit chan struct{}) error {
+// Start will perform the start of the DNS server and the setup of the handlers based on the
+// configuration values that have been supplied.
+func (d *Server) Start(quit chan struct{}) error {
 	// start the DNS sever
 	log.Infof("starting dns server on :%d (%s)", d.port, d.protocol)
 	d.dns = &dns.Server{Addr: ":" + strconv.Itoa(d.port), Net: d.protocol}
@@ -133,16 +138,18 @@ func (d *DNSServer) Start(quit chan struct{}) error {
 	return nil
 }
 
-func (d *DNSServer) Close() {
+// Close shutdowns down the DNS server in response to a the main process shutting down
+func (d *Server) Close() {
 	d.dns.Shutdown()
 }
 
-func StartServer(quit chan struct{}) *DNSServer {
+// StartServer starts the DNS server in a go routine, returnings a reference to the server
+func StartServer(quit chan struct{}) *Server {
 	c := config.GetConfig()
 
 	port := c.DNS.Port
 	protocol := c.DNS.Protocol
-	srv := &DNSServer{
+	srv := &Server{
 		port:     port,
 		protocol: protocol,
 	}
