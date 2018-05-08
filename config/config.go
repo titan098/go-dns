@@ -10,7 +10,7 @@ import (
 
 var log = logging.SetupLogging("config")
 
-// Donain is the structure used to represent domain configurations in the config file
+// Domain is the structure used to represent domain configurations in the config file
 type Domain struct {
 	Domain        string
 	ReverseDomain string
@@ -38,6 +38,7 @@ type Ns struct {
 type DNS struct {
 	Port     int    `toml:"port"`
 	Protocol string `toml:"protocol"`
+	Domain   string `toml:"domain"`
 	Soa      Soa    `toml:"soa"`
 	Ns       Ns     `toml:"ns"`
 }

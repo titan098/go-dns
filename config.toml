@@ -1,6 +1,7 @@
 [dns]
-port = 53
+port = 15353
 protocol = "udp"
+domain = "ipv6.ellefsen.ninja"
 
     [dns.soa]
     ttl = 300

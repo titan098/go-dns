@@ -21,6 +21,8 @@ type Server struct {
 	port     int
 }
 
+type QueryFunc func(m *dns.Msg) int
+
 func (d *Server) getNameForIPv6(name string, prefix *config.Domain) string {
 	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
 	digits := strings.TrimSuffix(name, "."+p)
@@ -45,21 +47,49 @@ func (d *Server) appendAnswer(m *dns.Msg, answer string) {
 	m.Answer = append(m.Answer, rr)
 }
 
-func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.Soa, ns *config.Ns) {
+func (d *Server) dynamicResponse(q dns.Question, prefix *config.Domain) (int, []string) {
+	soa := config.GetConfig().DNS.Soa
+
+	rcode := dns.RcodeSuccess
+	answer := []string{}
+	switch q.Qtype {
+	case dns.TypeANY, dns.TypeAAAA:
+		// manage the forward lookup, respond for ANY as well
+		address := d.getIPv6ForName(q.Name, prefix)
+		answer = append(answer, fmt.Sprintf("%s AAAA %s", q.Name, address))
+
+	case dns.TypePTR:
+		// manage the reverse lookup
+		domain := d.getNameForIPv6(q.Name, prefix)
+		answer = append(answer, fmt.Sprintf("%s PTR %s", q.Name, domain))
+
+	default:
+		answer = append(answer, soa.String(config.GetConfig().DNS.Domain))
+		rcode = dns.RcodeNameError
+	}
+	return rcode, answer
+}
+
+func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain) int {
+	rcode := dns.RcodeSuccess
+	soa := config.GetConfig().DNS.Soa
+	ns := config.GetConfig().DNS.Ns
+
 	for _, q := range m.Question {
 		log.Debugf("query (%d): '%s'", m.Id, q.String())
 		switch q.Qtype {
 		case dns.TypeSOA:
 			// manage SOA requests
-			d.appendAnswer(m, soa.String(prefix.Domain))
+			d.appendAnswer(m, soa.String(config.GetConfig().DNS.Domain))
 
 		case dns.TypeNS:
 			//manage NS requests
-			if q.Name != prefix.Domain {
+			if q.Name != (prefix.Domain + ".") {
 				// if we are querying the NS for a host then we know nothing,
 				// return the SOA record for the delegated domain.
-				answer := soa.String(prefix.Domain)
+				answer := soa.String(config.GetConfig().DNS.Domain)
 				d.appendAnswer(m, answer)
+				rcode = dns.RcodeNameError
 			} else {
 				// return the nameservers for this domain
 				for _, ns := range ns.Servers {
@@ -68,37 +98,36 @@ func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.Soa, 
 				}
 			}
 
-		case dns.TypeANY, dns.TypeAAAA:
-			// manage the forward lookup, respond for ANY as well
-			address := d.getIPv6ForName(q.Name, prefix)
-			answer := fmt.Sprintf("%s AAAA %s", q.Name, address)
-			d.appendAnswer(m, answer)
-
-		case dns.TypePTR:
-			// manage the reverse lookup
-			domain := d.getNameForIPv6(q.Name, prefix)
-			answer := fmt.Sprintf("%s PTR %s", q.Name, domain)
-			d.appendAnswer(m, answer)
+		default:
+			//fall through return the SOA with NXERROR
+			code, answers := d.dynamicResponse(q, prefix)
+			for _, answer := range answers {
+				d.appendAnswer(m, answer)
+			}
+			rcode = code
 		}
 	}
 
 	//show the answers
 	for _, answer := range m.Answer {
-		log.Debugf("answer (%d): '%s'", m.Id, answer.String())
+		log.Debugf("answer (%d) [%s]: '%s'", m.Id, dns.RcodeToString[rcode], answer.String())
 	}
+	return rcode
 }
 
-func (d *Server) generateHandleDNSRequest(domain string, prefix *config.Domain, soa *config.Soa, ns *config.Ns) (string, func(w dns.ResponseWriter, r *dns.Msg)) {
+func (d *Server) generateHandleDNSRequest(domain string, prefix *config.Domain) (string, func(w dns.ResponseWriter, r *dns.Msg)) {
 	log.Infof("creating handler for %s", domain)
 	return domain, func(w dns.ResponseWriter, r *dns.Msg) {
 		m := new(dns.Msg)
 		m.SetReply(r)
 		m.Compress = false
+		rcode := dns.RcodeSuccess
 
 		switch r.Opcode {
 		case dns.OpcodeQuery:
-			d.parseQuery(m, prefix, soa, ns)
+			rcode = d.parseQuery(m, prefix)
 		}
+		m.SetRcode(r, rcode)
 
 		w.WriteMsg(m)
 	}
@@ -111,7 +140,6 @@ func (d *Server) Start(quit chan struct{}) error {
 	log.Infof("starting dns server on :%d (%s)", d.port, d.protocol)
 	d.dns = &dns.Server{Addr: ":" + strconv.Itoa(d.port), Net: d.protocol}
 
-	dnsConfig := config.GetConfig().DNS
 	domains := config.GetConfig().Domains
 
 	for domain, domainPrefix := range domains {
@@ -124,8 +152,8 @@ func (d *Server) Start(quit chan struct{}) error {
 		reverseDomainPrefix.Domain = reverse
 		reverseDomainPrefix.ReverseDomain = domain
 
-		dns.HandleFunc(d.generateHandleDNSRequest(domain, &forwardDomainPrefix, &dnsConfig.Soa, &dnsConfig.Ns))
-		dns.HandleFunc(d.generateHandleDNSRequest(reverse, &reverseDomainPrefix, &dnsConfig.Soa, &dnsConfig.Ns))
+		dns.HandleFunc(d.generateHandleDNSRequest(domain, &forwardDomainPrefix))
+		dns.HandleFunc(d.generateHandleDNSRequest(reverse, &reverseDomainPrefix))
 	}
 
 	err := d.dns.ListenAndServe()
