@@ -21,7 +21,7 @@ type Server struct {
 	port     int
 }
 
-type QueryFunc func(m *dns.Msg) int
+type QueryFunc func(q dns.Question, prefix *config.Domain) (int, []string)
 
 func (d *Server) getNameForIPv6(name string, prefix *config.Domain) string {
 	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
@@ -70,7 +70,7 @@ func (d *Server) dynamicResponse(q dns.Question, prefix *config.Domain) (int, []
 	return rcode, answer
 }
 
-func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain) int {
+func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain, queryfunc QueryFunc) int {
 	rcode := dns.RcodeSuccess
 	soa := config.GetConfig().DNS.Soa
 	ns := config.GetConfig().DNS.Ns
@@ -100,7 +100,7 @@ func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain) int {
 
 		default:
 			//fall through return the SOA with NXERROR
-			code, answers := d.dynamicResponse(q, prefix)
+			code, answers := queryfunc(q, prefix)
 			for _, answer := range answers {
 				d.appendAnswer(m, answer)
 			}
@@ -125,7 +125,7 @@ func (d *Server) generateHandleDNSRequest(domain string, prefix *config.Domain) 
 
 		switch r.Opcode {
 		case dns.OpcodeQuery:
-			rcode = d.parseQuery(m, prefix)
+			rcode = d.parseQuery(m, prefix, d.dynamicResponse)
 		}
 		m.SetRcode(r, rcode)
 
@@ -184,3 +184,6 @@ func StartServer(quit chan struct{}) *Server {
 
 	return srv
 }
+
+//TODO: Fall through for top level domain to return NXERROR
+//TODO: SOA and NS records should work for top level domain
