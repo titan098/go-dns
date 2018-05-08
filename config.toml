@@ -1,5 +1,5 @@
 [dns]
-port = 15353
+port = 53
 protocol = "udp"
 
     [dns.soa]
@@ -8,14 +8,14 @@ protocol = "udp"
     retry = 1800
     expire = 10800
     minimum = 300
-    mname = "dns.ellefsen.ninja"
+    mname = "ns-ipv6.ellefsen.ninja"
     rname = "dns.ellefsen.ninja"
 
     [dns.ns]
     servers = ["ns-ipv6.ellefsen.ninja"]
 
 [domains]
-    [domains."ipv6.ellefsen.ninja"]
-    prefix = "2001:470:1f23:ff::"
+    [domains."dynamic.ipv6.ellefsen.ninja"]
+    prefix = "2600:70ff:e861:1::"
     mask = 64
 

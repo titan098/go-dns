@@ -68,8 +68,7 @@ func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain, soa *config.Soa, 
 				}
 			}
 
-		case dns.TypeANY:
-		case dns.TypeAAAA:
+		case dns.TypeANY, dns.TypeAAAA:
 			// manage the forward lookup, respond for ANY as well
 			address := d.getIPv6ForName(q.Name, prefix)
 			answer := fmt.Sprintf("%s AAAA %s", q.Name, address)
