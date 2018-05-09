@@ -12,10 +12,11 @@ var log = logging.SetupLogging("config")
 
 // Domain is the structure used to represent domain configurations in the config file
 type Domain struct {
-	Domain        string
-	ReverseDomain string
+	Domain        string `toml:"domain"`
+	ReverseDomain string `toml:"reverse_domain"`
 	Prefix        string `toml:"prefix"`
 	Mask          int    `toml:"mask"`
+	ResponseType  string `toml:"response_type"`
 }
 
 // Soa contains the parameters for the SOA record returned for this domain
@@ -38,15 +39,15 @@ type Ns struct {
 type DNS struct {
 	Port     int    `toml:"port"`
 	Protocol string `toml:"protocol"`
-	Domain   string `toml:"domain"`
+	Domain   Domain `toml:"domain"`
 	Soa      Soa    `toml:"soa"`
 	Ns       Ns     `toml:"ns"`
 }
 
 // Config is the main configuration object
 type Config struct {
-	DNS     DNS               `toml:"dns"`
-	Domains map[string]Domain `toml:"domains"`
+	DNS        DNS               `toml:"dns"`
+	SubDomains map[string]Domain `toml:"subdomains"`
 }
 
 var config *Config

@@ -1,7 +1,12 @@
 [dns]
 port = 15353
 protocol = "udp"
-domain = "ipv6.ellefsen.ninja"
+
+    [dns.domain]
+    response_type = "NxError"
+    domain = "ipv6.ellefsen.ninja"
+    prefix = "2600:70ff:e861::"
+    mask = 48
 
     [dns.soa]
     ttl = 300
@@ -15,8 +20,8 @@ domain = "ipv6.ellefsen.ninja"
     [dns.ns]
     servers = ["ns-ipv6.ellefsen.ninja"]
 
-[domains]
-    [domains."dynamic.ipv6.ellefsen.ninja"]
+[subdomains]
+    [subdomains."dynamic.ipv6.ellefsen.ninja"]
+    response_type = "Dynamic"
     prefix = "2600:70ff:e861:1::"
     mask = 64
-
