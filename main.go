@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,10 +20,15 @@ func cleanup(quit chan struct{}) {
 
 func main() {
 	log.Info("starting up...")
+
+	// define the input flags
+	var configFile string
+	flag.StringVar(&configFile, "c", "config.toml", "the config file. defaults to 'config.toml'")
+	flag.Parse()
+
+	config.Load(configFile)
+
 	quit := make(chan struct{})
-
-	config.Load("config.toml")
-
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {

@@ -7,10 +7,10 @@
 Given the following IPv6 address, the reverse address will be generated:
 
 ```
-2001:470:1f2f:23:14f5:d526:ec16:ba83 -> 14f5d526ec16ba83.ipv6.ellefsen.ninja
+2001:470:1f2f:23:14f5:d526:ec16:ba83 -> 14f5d526ec16ba83.ipv6.example.com
 ```
 
-Where the original network prefix is: `2001:470:1f2f:23::/64`
+Where the original network prefix is: `2600:ffee:eeff::/48`
 
 ## Configuration
 
@@ -21,22 +21,34 @@ The configuration file `config.toml` is as follows:
 port = 15353
 protocol = "udp"
 
+    [dns.domain]
+    response_type = "NxError"
+    domain = "ipv6.example.com"
+    prefix = "2600:ffee:eeff::"
+    mask = 48
+
     [dns.soa]
     ttl = 300
     refresh = 3600
     retry = 1800
     expire = 10800
     minimum = 300
-    mname = "ns.ipv6.domain.example.com"
-    rname = "dns.ipv6.domain.example.com"
+    mname = "ns-ipv6.example.com"
+    rname = "dns.example.com"
 
     [dns.ns]
-    servers = ["ns.ipv6.domain.example.com"]
+    servers = ["ns-ipv6.example.com"]
 
-[domains]
-    [domains."ipv6.domain.example.com"]
-    prefix = "2001:470:1f2f:23::"
+[subdomain]
+    [subdomain."dynamic.ipv6.example.com"]
+    response_type = "Dynamic"
+    prefix = "2600:ffee:eeff:1::"
     mask = 64
+
+[static]
+    [static."a.dynamic.ipv6.example.com"]
+    prefix = "2600:ffee:eeff:1::100"
+
 ```
 
 ### `[dns]` section
@@ -78,6 +90,28 @@ The `domains` section contains the defintions of the prefix and the domain names
 |---------|----------------------------------------|
 | prefix  | The IPv6 prefix for the reverse lookup |
 | mask    | The network mask                       |
+
+## Response types
+
+There are currently three types of responses, these are `NxError`, `Dynamic`, or `Static`. These response types determine how the responses are constructed.
+
+### `NxError`
+
+The `NxError` response type will return `NXERROR` for every query. It can be uses for fall through responses or where you need to return an `NXERROR` for every query.
+
+### `Dynamic`
+
+The `Dynamic` response type will return an `AAAA` and corresponding `PTR` for a DNS query. The domain name that is returned is of the form:
+
+```
+xxxxxxxxxxxxxxxx.domain.example.com
+```
+
+where the first part of the domain is the hex representation of the IP address after the IPv6 prefix. The domain name is reversable so the IPv6 address can be reconstructed from the DNS name.
+
+### `Static`
+
+Returns an `AAAA` and `PTR` record for a specificed DNS name. This will override any dynamic prefix responses that may include a the specified IP address. The mask for a static response will always be defaulted to `128`, regardless of any prefix value that has been set.
 
 ## Running
 
