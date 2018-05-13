@@ -46,8 +46,9 @@ type DNS struct {
 
 // Config is the main configuration object
 type Config struct {
-	DNS        DNS               `toml:"dns"`
-	SubDomains map[string]Domain `toml:"subdomains"`
+	DNS       DNS               `toml:"dns"`
+	SubDomain map[string]Domain `toml:"subdomain"`
+	Static    map[string]Domain `toml:"static"`
 }
 
 var config *Config

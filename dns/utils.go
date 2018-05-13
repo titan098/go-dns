@@ -5,6 +5,8 @@ import (
 	"net"
 	"strconv"
 	"strings"
+
+	"bitbucket.org/titan098/go-dns/config"
 )
 
 func reverse(s string) string {
@@ -48,4 +50,21 @@ func SplitPrefix(prefix string) (string, int) {
 	splitAddress := strings.Split(prefix, "/")
 	mask, _ := strconv.Atoi(splitAddress[1])
 	return splitAddress[0], mask
+}
+
+// GetNameForIPv6 constructs a dns name for a passed IPv6 prefix
+func GetNameForIPv6(name string, prefix *config.Domain) string {
+	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
+	digits := strings.TrimSuffix(name, "."+p)
+	strippedDigits := reverse(strings.Join(strings.Split(digits, "."), ""))
+	return strippedDigits + "." + prefix.ReverseDomain + "."
+}
+
+// GetIPv6ForName constructs an IPv6 name for a passed dns name
+func GetIPv6ForName(name string, prefix *config.Domain) string {
+	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
+
+	digits := strings.TrimSuffix(name, "."+prefix.Domain+".")
+	joinedDigits := reverse(strings.Join(strings.Split(digits, ""), ".")) + "." + p
+	return NibbleToIPv6(joinedDigits).String()
 }

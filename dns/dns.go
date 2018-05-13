@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 
 	"bitbucket.org/titan098/go-dns/config"
 	"bitbucket.org/titan098/go-dns/logging"
@@ -21,68 +20,11 @@ type Server struct {
 	port     int
 }
 
+// QueryFunc is a handling function for a domain prefix
 type QueryFunc func(q dns.Question, prefix *config.Domain) (int, []string)
 
-func getNameForIPv6(name string, prefix *config.Domain) string {
-	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
-	digits := strings.TrimSuffix(name, "."+p)
-	strippedDigits := reverse(strings.Join(strings.Split(digits, "."), ""))
-	return strippedDigits + "." + prefix.ReverseDomain + "."
-}
-
-func getIPv6ForName(name string, prefix *config.Domain) string {
-	p := IPv6ToNibble(net.ParseIP(prefix.Prefix), prefix.Mask)
-
-	digits := strings.TrimSuffix(name, "."+prefix.Domain+".")
-	joinedDigits := reverse(strings.Join(strings.Split(digits, ""), ".")) + "." + p
-	return NibbleToIPv6(joinedDigits).String()
-}
-
-func dynamicResponse(q dns.Question, prefix *config.Domain) (int, []string) {
-	log.Debugf("DynamicResponse handler for: %s", q.Name)
-	soa := config.GetConfig().DNS.Soa
-
-	rcode := dns.RcodeSuccess
-	answer := []string{}
-	switch q.Qtype {
-	case dns.TypeANY, dns.TypeAAAA:
-		// manage the forward lookup, respond for ANY as well
-		address := getIPv6ForName(q.Name, prefix)
-		answer = append(answer, fmt.Sprintf("%s AAAA %s", q.Name, address))
-
-	case dns.TypePTR:
-		// manage the reverse lookup
-		domain := getNameForIPv6(q.Name, prefix)
-		answer = append(answer, fmt.Sprintf("%s PTR %s", q.Name, domain))
-
-	default:
-		answer = append(answer, soa.String(config.GetConfig().DNS.Domain.Domain))
-		rcode = dns.RcodeNameError
-	}
-	return rcode, answer
-}
-
-func allNxErrorResponse(q dns.Question, prefix *config.Domain) (int, []string) {
-	log.Debugf("AllNxErrorResponse handler for: %s", q.Name)
-	soa := config.GetConfig().DNS.Soa
-
-	rcode := dns.RcodeNameError
-	answer := []string{}
-	switch q.Qtype {
-
-	default:
-		answer = append(answer, soa.String(config.GetConfig().DNS.Domain.Domain))
-	}
-	return rcode, answer
-}
-
-var responseFunctions = map[string]QueryFunc{
-	"Dynamic": dynamicResponse,
-	"NxError": allNxErrorResponse,
-}
-
 func getResponseFunction(responseType string) QueryFunc {
-	responseFunc, ok := responseFunctions[responseType]
+	responseFunc, ok := ResponseFunctions[responseType]
 	if ok {
 		return responseFunc
 	}
@@ -168,9 +110,9 @@ func (d *Server) Start(quit chan struct{}) error {
 	log.Infof("starting dns server on :%d (%s)", d.port, d.protocol)
 	d.dns = &dns.Server{Addr: ":" + strconv.Itoa(d.port), Net: d.protocol}
 
-	domains := config.GetConfig().SubDomains
-
-	for domain, domainPrefix := range domains {
+	// create the dynamic dns entries
+	log.Info("creating handlers for dynamic responses")
+	for domain, domainPrefix := range config.GetConfig().SubDomain {
 		reverse := IPv6ToNibble(net.ParseIP(domainPrefix.Prefix), domainPrefix.Mask)
 		forwardDomainPrefix := domainPrefix
 		reverseDomainPrefix := domainPrefix
@@ -184,7 +126,27 @@ func (d *Server) Start(quit chan struct{}) error {
 		dns.HandleFunc(d.generateHandleDNSRequest(&reverseDomainPrefix))
 	}
 
+	// static domain entries
+	log.Info("creating handlers for static responses")
+	for domain, staticPrefix := range config.GetConfig().Static {
+		staticPrefix.ResponseType = "Static"
+		staticPrefix.Mask = 128
+		reverse := IPv6ToNibble(net.ParseIP(staticPrefix.Prefix), 128)
+
+		forwardDomainPrefix := staticPrefix
+		reverseDomainPrefix := staticPrefix
+
+		forwardDomainPrefix.Domain = domain
+		forwardDomainPrefix.ReverseDomain = reverse
+		reverseDomainPrefix.Domain = reverse
+		reverseDomainPrefix.ReverseDomain = domain
+
+		dns.HandleFunc(d.generateHandleDNSRequest(&forwardDomainPrefix))
+		dns.HandleFunc(d.generateHandleDNSRequest(&reverseDomainPrefix))
+	}
+
 	// create fall through for other domains
+	log.Info("creating entries for toplevel responses")
 	topLevelPrefix := config.GetConfig().DNS.Domain
 	topLevelReverse := config.GetConfig().DNS.Domain
 	reverse := IPv6ToNibble(net.ParseIP(topLevelPrefix.Prefix), topLevelPrefix.Mask)
@@ -224,6 +186,3 @@ func StartServer(quit chan struct{}) *Server {
 
 	return srv
 }
-
-//TODO: Fall through for top level domain to return NXERROR
-//TODO: SOA and NS records should work for top level domain
