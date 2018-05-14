@@ -16,26 +16,27 @@ func dynamicResponse(q dns.Question, prefix *config.Domain) (int, []string) {
 
 	rcode := dns.RcodeSuccess
 	answer := []string{}
+	name := strings.ToLower(q.Name)
 	switch q.Qtype {
 	case dns.TypeANY, dns.TypeAAAA:
-		if strings.HasSuffix(q.Name, ".ip6.arpa.") {
+		if strings.HasSuffix(name, ".ip6.arpa.") {
 			// this is a reverse lookup, return the SOA record
 			answer = append(answer, soa.String(prefix.Domain))
 			rcode = dns.RcodeNameError
 		} else {
 			// manage the forward lookup, respond for ANY as well
-			address := GetIPv6ForName(q.Name, prefix)
-			answer = append(answer, fmt.Sprintf("%s AAAA %s", q.Name, address))
+			address := GetIPv6ForName(name, prefix)
+			answer = append(answer, fmt.Sprintf("%s AAAA %s", name, address))
 		}
 
 	case dns.TypePTR:
 		// manage the reverse lookup
-		if !strings.HasSuffix(q.Name, ".ip6.arpa.") {
+		if !strings.HasSuffix(name, ".ip6.arpa.") {
 			// this is a reverse lookup, return the SOA record
 			answer = append(answer, soa.String(prefix.Domain))
 		} else {
-			domain := GetNameForIPv6(q.Name, prefix)
-			answer = append(answer, fmt.Sprintf("%s PTR %s", q.Name, domain))
+			domain := GetNameForIPv6(name, prefix)
+			answer = append(answer, fmt.Sprintf("%s PTR %s", name, domain))
 		}
 
 	default:
@@ -53,24 +54,25 @@ func staticResponse(q dns.Question, prefix *config.Domain) (int, []string) {
 
 	rcode := dns.RcodeSuccess
 	answer := []string{}
+	name := strings.ToLower(q.Name)
 	switch q.Qtype {
 	case dns.TypeANY, dns.TypeAAAA:
-		if strings.HasSuffix(q.Name, ".ip6.arpa.") {
+		if strings.HasSuffix(name, ".ip6.arpa.") {
 			// this is a reverse lookup, return the SOA record
 			answer = append(answer, soa.String(config.GetConfig().DNS.Domain.Domain))
 			rcode = dns.RcodeNameError
 		} else {
 			// manage the forward lookup, respond for ANY as well
-			answer = append(answer, fmt.Sprintf("%s AAAA %s", q.Name, prefix.Prefix))
+			answer = append(answer, fmt.Sprintf("%s AAAA %s", name, prefix.Prefix))
 		}
 
 	case dns.TypePTR:
 		// manage the reverse lookup
-		if !strings.HasSuffix(q.Name, ".ip6.arpa.") {
+		if !strings.HasSuffix(name, ".ip6.arpa.") {
 			// this is a forward lookup, return an SOA record
 			answer = append(answer, soa.String(config.GetConfig().DNS.Domain.Domain))
 		} else {
-			answer = append(answer, fmt.Sprintf("%s PTR %s", q.Name, prefix.ReverseDomain))
+			answer = append(answer, fmt.Sprintf("%s PTR %s", name, prefix.ReverseDomain))
 		}
 
 	default:

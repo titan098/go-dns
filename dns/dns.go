@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 
 	"bitbucket.org/titan098/go-dns/config"
 	"bitbucket.org/titan098/go-dns/logging"
@@ -63,7 +64,7 @@ func (d *Server) parseQuery(m *dns.Msg, prefix *config.Domain, queryfunc QueryFu
 			} else {
 				// return the nameservers for this domain
 				for _, ns := range ns.Servers {
-					answer := fmt.Sprintf("%s NS %s", q.Name, ns)
+					answer := fmt.Sprintf("%s NS %s", strings.ToLower(q.Name), ns)
 					d.appendAnswer(m, answer)
 				}
 			}

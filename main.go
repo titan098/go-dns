@@ -23,7 +23,7 @@ func main() {
 
 	// define the input flags
 	var configFile string
-	flag.StringVar(&configFile, "c", "config.toml", "the config file. defaults to 'config.toml'")
+	flag.StringVar(&configFile, "c", "config.toml", "the config file.")
 	flag.Parse()
 
 	config.Load(configFile)
