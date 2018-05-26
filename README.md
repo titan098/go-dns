@@ -4,10 +4,14 @@
 
 `go-dns` dynamically generates `AAAA` and `PTR` dns records for an IPv6 prefix. In cases where SLAAC, and other dynamic IPv6 methods are being used to assign addresses, it is not feasible to maintain reverse DNS records for all assignable addresses. `go-dns` will dynamically return `AAAA` and `PTR` records based on the queried IPv6 address.
 
-Given the following IPv6 address, the reverse address will be generated:
+Given the following IPv6 prefix and address the following reverse address will be generated:
 
 ```
-2001:470:1f2f:23:14f5:d526:ec16:ba83 -> 14f5d526ec16ba83.ipv6.example.com
+Prefix: 
+2123:123:146f:ff::/64
+
+Address:
+2123:123:146f:ff:14f5:d526:ec16:ba83 -> 14f5d526ec16ba83.dynamic.ipv6.example.com
 ```
 
 Where the original network prefix is: `2600:ffee:eeff::/48`
@@ -18,7 +22,7 @@ The configuration file `config.toml` is as follows:
 
 ```toml
 [dns]
-port = 15353
+port = 53
 protocol = "udp"
 
     [dns.domain]
@@ -55,12 +59,23 @@ protocol = "udp"
 
 The `dns` section contains the configurable options for the DNS server. The configuration options are:
 
-| Option   | Description                            | Options        |
-|----------|----------------------------------------|----------------|
-| port     | the port the DNS server will listen on | Any value port |
-| protocol | the protocol to use                    | `tcp` or `udp` |
+| Option        | Description                            | Options        |
+|---------------|----------------------------------------|----------------|
+| port          | the port the DNS server will listen on | Any value port |
+| protocol      | the protocol to use                    | `tcp` or `udp` |
 
-### `[dns.soa]`
+### `[dns.domain]` section
+
+The `dns.domain` section contain the top-level response for this domain prefix. If your network is broken into a set of smaller networks, then this can be an `NxError` type which will act as a catch all for top-level dns queries and return an `NXERROR`
+
+| Option        | Description                            |
+|---------------|----------------------------------------|
+| prefix        | The IPv6 prefix for the reverse lookup |
+| mask          | The mask for the prefix                |
+| response_type | The response type for this subdomain   |
+| mask          | The network mask                       |
+
+### `[dns.soa]` section
 
 The `dns.soa` sections contains the defaults for the SOA records for the domain:
 
@@ -74,22 +89,24 @@ The `dns.soa` sections contains the defaults for the SOA records for the domain:
 | mname   | The primary nameserver for this zone                   |         |
 | rname   | Email address for the administrator for the zone       |         |
 
-### `[dns.soa]`
+### `[dns.ns]`
 
-The `dns.soa` sections contains the defaults for the SOA records for the domain:
+The `dns.ns` sections contains the defaults for the ns records for the domain:
 
 | Option  | Description                            |
 |---------|----------------------------------------|
 | server  | The list of namesevers for this domain |
 
-### `[domains]` sections
+### `[subdomain]` sections
 
-The `domains` section contains the defintions of the prefix and the domain names for the generated responses. Each sub-domain should be contains in a section of the following form `[domains."<sub.domain.name>"]`, where each secion has the following form:
+The `subdomain` section contains the defintions of the prefix and the domain names for the generated responses. Each sub-domain should be contains in a section of the following form `[subdomain."<sub.domain.name>"]`, where each secion has the following form:
 
-| Option  | Description                            |
-|---------|----------------------------------------|
-| prefix  | The IPv6 prefix for the reverse lookup |
-| mask    | The network mask                       |
+| Option        | Description                            |
+|---------------|----------------------------------------|
+| prefix        | The IPv6 prefix for the reverse lookup |
+| mask          | The mask for the prefix                |
+| response_type | The response type for this subdomain   |
+| mask          | The network mask                       |
 
 ## Response types
 
