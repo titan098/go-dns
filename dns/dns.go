@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"bitbucket.org/titan098/go-dns/config"
-	"bitbucket.org/titan098/go-dns/logging"
 	"github.com/miekg/dns"
+	"github.com/titan098/go-dns/config"
+	"github.com/titan098/go-dns/logging"
 )
 
 var log = logging.SetupLogging("dns")
@@ -108,12 +108,13 @@ func (d *Server) generateHandleDNSRequest(prefix *config.Domain) (string, func(w
 // configuration values that have been supplied.
 func (d *Server) Start(quit chan struct{}) error {
 	// start the DNS sever
+	conf := config.GetConfig()
 	log.Infof("starting dns server on :%d (%s)", d.port, d.protocol)
 	d.dns = &dns.Server{Addr: ":" + strconv.Itoa(d.port), Net: d.protocol}
 
 	// create the dynamic dns entries
 	log.Info("creating handlers for dynamic responses")
-	for domain, domainPrefix := range config.GetConfig().SubDomain {
+	for domain, domainPrefix := range conf.SubDomain {
 		reverse := IPv6ToNibble(net.ParseIP(domainPrefix.Prefix), domainPrefix.Mask)
 		forwardDomainPrefix := domainPrefix
 		reverseDomainPrefix := domainPrefix
@@ -129,7 +130,7 @@ func (d *Server) Start(quit chan struct{}) error {
 
 	// static domain entries
 	log.Info("creating handlers for static responses")
-	for domain, staticPrefix := range config.GetConfig().Static {
+	for domain, staticPrefix := range conf.Static {
 		staticPrefix.ResponseType = "Static"
 		staticPrefix.Mask = 128
 		reverse := IPv6ToNibble(net.ParseIP(staticPrefix.Prefix), 128)
@@ -148,16 +149,18 @@ func (d *Server) Start(quit chan struct{}) error {
 
 	// create fall through for other domains
 	log.Info("creating entries for toplevel responses")
-	topLevelPrefix := config.GetConfig().DNS.Domain
-	topLevelReverse := config.GetConfig().DNS.Domain
-	reverse := IPv6ToNibble(net.ParseIP(topLevelPrefix.Prefix), topLevelPrefix.Mask)
+	if conf.DNS.Domain != nil {
+		topLevelPrefix := conf.DNS.Domain
+		topLevelReverse := conf.DNS.Domain
+		reverse := IPv6ToNibble(net.ParseIP(topLevelPrefix.Prefix), topLevelPrefix.Mask)
 
-	topLevelPrefix.ReverseDomain = reverse
-	topLevelReverse.Domain = reverse
-	topLevelReverse.ReverseDomain = topLevelPrefix.Domain
+		topLevelPrefix.ReverseDomain = reverse
+		topLevelReverse.Domain = reverse
+		topLevelReverse.ReverseDomain = topLevelPrefix.Domain
 
-	dns.HandleFunc(d.generateHandleDNSRequest(&topLevelPrefix))
-	dns.HandleFunc(d.generateHandleDNSRequest(&topLevelReverse))
+		dns.HandleFunc(d.generateHandleDNSRequest(topLevelPrefix))
+		dns.HandleFunc(d.generateHandleDNSRequest(topLevelReverse))
+	}
 
 	err := d.dns.ListenAndServe()
 	if err != nil {

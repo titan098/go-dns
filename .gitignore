@@ -2,5 +2,10 @@ vendor/
 .vscode
 
 **/debug.test
+**/__debug_bin
 debug
+
 go-dns
+!cmd/*
+
+go-dns*.snap

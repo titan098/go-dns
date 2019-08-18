@@ -1,15 +1,16 @@
-FROM golang AS builder
+FROM golang:1.12-alpine AS builder
+RUN apk add --no-cache git
 
-WORKDIR /src/bitbucket.org/titan098/go-dns/
+WORKDIR /src/github.com/titan098/go-dns/
 COPY . .
 
-RUN go get -d -v ./...
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o go-dns .
+RUN go install -v ./cmd/...
 
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+RUN apk add --no-cache ca-certificates bash
+
 WORKDIR /root
-COPY --from=builder /src/bitbucket.org/titan098/go-dns/go-dns .
+COPY --from=builder /go/bin/go-dns .
 COPY config.toml .
 
 EXPOSE 53/udp

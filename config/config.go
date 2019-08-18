@@ -3,9 +3,11 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 
-	"bitbucket.org/titan098/go-dns/logging"
 	"github.com/pelletier/go-toml"
+	"github.com/titan098/go-dns/logging"
 )
 
 var log = logging.SetupLogging("config")
@@ -37,11 +39,11 @@ type Ns struct {
 
 // DNS is a the toplevel collection of times returned when the config is parsed
 type DNS struct {
-	Port     int    `toml:"port"`
-	Protocol string `toml:"protocol"`
-	Domain   Domain `toml:"domain"`
-	Soa      Soa    `toml:"soa"`
-	Ns       Ns     `toml:"ns"`
+	Port     int     `toml:"port"`
+	Protocol string  `toml:"protocol"`
+	Domain   *Domain `toml:"domain"`
+	Soa      *Soa    `toml:"soa"`
+	Ns       *Ns     `toml:"ns"`
 }
 
 // Config is the main configuration object
@@ -61,6 +63,19 @@ func (soa *Soa) String(domain string) string {
 // GetConfig returns the Config structure for this application
 func GetConfig() *Config {
 	return config
+}
+
+// LocateConfigFile will attempt to locate a config file based on common locations
+func LocateConfigFile() string {
+	// if we are running in a snap
+	snapData := os.Getenv("SNAP_COMMON")
+	configFile := "config.toml"
+	if snapData != "" {
+		configFile = path.Join(snapData, "config.toml")
+		log.Infof("Running in a snap loading from: %s", configFile)
+	}
+
+	return configFile
 }
 
 // Load will load the configuration from a passed filename

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"bitbucket.org/titan098/go-dns/config"
+	"github.com/titan098/go-dns/config"
 )
 
 func reverse(s string) string {

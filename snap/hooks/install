@@ -1,0 +1,14 @@
+#!/bin/sh -e
+
+if [ ! -e $SNAP_COMMON/config.toml ]; then
+
+CONFIG=$(cat <<EOF
+[dns]
+port = 53
+protocol = "udp"
+EOF
+)
+
+echo $CONFIG > $SNAP_COMMON/config.toml
+
+fi

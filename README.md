@@ -8,13 +8,13 @@ Given the following IPv6 prefix and address the following reverse address will b
 
 ```
 Prefix: 
-2123:123:146f:ff::/64
+2001:db8:1:1::/64
 
 Address:
-2123:123:146f:ff:14f5:d526:ec16:ba83 -> 14f5d526ec16ba83.dynamic.ipv6.example.com
+2001:db8:1:1:14f5:d526:ec16:ba83 -> 14f5d526ec16ba83.dynamic.ipv6.example.com
 ```
 
-Where the original network prefix is: `2600:ffee:eeff::/48`
+where the original network prefix is: `2001:db8:1::/48`
 
 ## Configuration
 
@@ -22,37 +22,34 @@ The configuration file `config.toml` is as follows:
 
 ```toml
 [dns]
-port = 53
+port = 15353
 protocol = "udp"
 
-    [dns.domain]
-    response_type = "NxError"
-    domain = "ipv6.example.com"
-    prefix = "2600:ffee:eeff::"
-    mask = 48
+[dns.domain]
+response_type = "NxError"
+domain = "ipv6.example.com"
+prefix = "2001:db8:1::"
+mask = 48
 
-    [dns.soa]
-    ttl = 300
-    refresh = 3600
-    retry = 1800
-    expire = 10800
-    minimum = 300
-    mname = "ns-ipv6.example.com"
-    rname = "dns.example.com"
+[dns.soa]
+ttl = 300
+refresh = 3600
+retry = 1800
+expire = 10800
+minimum = 300
+mname = "ns-ipv6.example.com"
+rname = "dns.example.com"
 
-    [dns.ns]
-    servers = ["ns-ipv6.example.com"]
+[dns.ns]
+servers = ["ns-ipv6.example.com"]
 
-[subdomain]
-    [subdomain."dynamic.ipv6.example.com"]
-    response_type = "Dynamic"
-    prefix = "2600:ffee:eeff:1::"
-    mask = 64
+[subdomain."dynamic.ipv6.example.com"]
+response_type = "Dynamic"
+prefix = "2001:db8:1:1::"
+mask = 64
 
-[static]
-    [static."a.dynamic.ipv6.example.com"]
-    prefix = "2600:ffee:eeff:1::100"
-
+[static."a.dynamic.ipv6.example.com"]
+prefix = "2001:db8:1:1::100"
 ```
 
 ### `[dns]` section
@@ -129,6 +126,111 @@ where the first part of the domain is the hex representation of the IP address a
 ### `Static`
 
 Returns an `AAAA` and `PTR` record for a specificed DNS name. This will override any dynamic prefix responses that may include a the specified IP address. The mask for a static response will always be defaulted to `128`, regardless of any prefix value that has been set.
+
+## Example
+
+The example config above will create a valid instance of `go-dns`, however it will not be useful outside a few examples:
+
+1. Query the reverse domain for `2001:db8:1:1::1`:
+
+```bash
+$ dig @127.0.0.1 -p 15353 -x 2001:db8:1:1::1
+
+; <<>> DiG 9.11.5-P1-1ubuntu2.5-Ubuntu <<>> @127.0.0.1 -p 15353 -x 2001:db8:1:1::1
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 6047
+;; flags: qr rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.1.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa. IN PTR
+
+;; ANSWER SECTION:
+1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.1.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR 0000000000000001.dynamic.ipv6.example.com.
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#15353(127.0.0.1)
+;; WHEN: Sun Aug 18 13:37:43 SAST 2019
+;; MSG SIZE  rcvd: 217
+```
+
+2. Query the reverse domain for `2001:db8:1:1::100` (a static assignment in config)
+
+```bash
+$ dig @127.0.0.1 -p 15353 -x 2001:db8:1:1::100
+
+; <<>> DiG 9.11.5-P1-1ubuntu2.5-Ubuntu <<>> @127.0.0.1 -p 15353 -x 2001:db8:1:1::100
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 12620
+;; flags: qr rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.1.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa. IN PTR
+
+;; ANSWER SECTION:
+0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.1.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR a.dynamic.ipv6.example.com.
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#15353(127.0.0.1)
+;; WHEN: Sun Aug 18 13:38:12 SAST 2019
+;; MSG SIZE  rcvd: 202
+```
+
+3. Perform a lookup dyanmic domain:
+
+```bash
+$ dig @127.0.0.1 -p 15353 AAAA 0000000000000001.dynamic.ipv6.example.com
+
+; <<>> DiG 9.11.5-P1-1ubuntu2.5-Ubuntu <<>> @127.0.0.1 -p 15353 AAAA 0000000000000001.dynamic.ipv6.example.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 36486
+;; flags: qr rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;0000000000000001.dynamic.ipv6.example.com. IN AAAA
+
+;; ANSWER SECTION:
+0000000000000001.dynamic.ipv6.example.com. 3600	IN AAAA	2001:db8:1:1::1
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#15353(127.0.0.1)
+;; WHEN: Sun Aug 18 13:44:25 SAST 2019
+;; MSG SIZE  rcvd: 128
+```
+
+4. Perform a lookup for a static domain
+
+```bash
+$ dig @127.0.0.1 -p 15353 AAAA a.dynamic.ipv6.example.com
+
+; <<>> DiG 9.11.5-P1-1ubuntu2.5-Ubuntu <<>> @127.0.0.1 -p 15353 AAAA a.dynamic.ipv6.example.com
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 50346
+;; flags: qr rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;a.dynamic.ipv6.example.com.	IN	AAAA
+
+;; ANSWER SECTION:
+a.dynamic.ipv6.example.com. 3600 IN	AAAA	2001:db8:1:1::100
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#15353(127.0.0.1)
+;; WHEN: Sun Aug 18 13:38:46 SAST 2019
+;; MSG SIZE  rcvd: 98
+
+```
 
 ## Running
 

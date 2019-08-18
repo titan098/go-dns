@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"bitbucket.org/titan098/go-dns/config"
-	"bitbucket.org/titan098/go-dns/dns"
-	"bitbucket.org/titan098/go-dns/logging"
+	"github.com/titan098/go-dns/config"
+	"github.com/titan098/go-dns/dns"
+	"github.com/titan098/go-dns/logging"
 )
 
 var log = logging.SetupLogging("main")
@@ -23,8 +23,14 @@ func main() {
 
 	// define the input flags
 	var configFile string
-	flag.StringVar(&configFile, "c", "config.toml", "the config file.")
+	flag.StringVar(&configFile, "c", "", "the paht to the config file.")
 	flag.Parse()
+
+	// find out if are in a snap and we can load the config from
+	// the data directory
+	if configFile == "" {
+		configFile = config.LocateConfigFile()
+	}
 
 	config.Load(configFile)
 

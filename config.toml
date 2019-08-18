@@ -1,31 +1,59 @@
 [dns]
-port = 53
+port = 15353
 protocol = "udp"
 
-    [dns.domain]
-    response_type = "NxError"
-    domain = "ipv6.ellefsen.ninja"
-    prefix = "2600:70ff:e861::"
-    mask = 48
+[dns.domain]
+response_type = "NxError"
+domain = "ipv6.example.com"
+prefix = "2001:db8:1::"
+mask = 48
 
-    [dns.soa]
-    ttl = 300
-    refresh = 3600
-    retry = 1800
-    expire = 10800
-    minimum = 300
-    mname = "ns-ipv6.ellefsen.ninja"
-    rname = "dns.ellefsen.ninja"
+[dns.soa]
+ttl = 300
+refresh = 3600
+retry = 1800
+expire = 10800
+minimum = 300
+mname = "ns-ipv6.example.com"
+rname = "dns.example.com"
 
-    [dns.ns]
-    servers = ["ns-ipv6.ellefsen.ninja"]
+[dns.ns]
+servers = ["ns-ipv6.example.com"]
 
-[subdomain]
-    [subdomain."dynamic.ipv6.ellefsen.ninja"]
-    response_type = "Dynamic"
-    prefix = "2600:70ff:e861:1::"
-    mask = 64
+[subdomain."dynamic.ipv6.example.com"]
+response_type = "Dynamic"
+prefix = "2001:db8:1:1::"
+mask = 64
 
-# [static]
-#     [static."a.dynamic.ipv6.ellefsen.ninja"]
-#     prefix = "2600:70ff:e861:1::100"
+[static."a.dynamic.ipv6.example.com"]
+prefix = "2001:db8:1:1::100"
+
+#[dns]
+#port = 53
+#protocol = "udp"
+
+#[dns.domain]
+#response_type = "NxError"
+#domain = "ipv6.ellefsen.ninja"
+#prefix = "2600:70ff:e861::"
+#mask = 48
+
+#[dns.soa]
+#ttl = 300
+#refresh = 3600
+#retry = 1800
+#expire = 10800
+#minimum = 300
+#mname = "ns-ipv6.ellefsen.ninja"
+#rname = "dns.ellefsen.ninja"
+
+#[dns.ns]
+#servers = ["ns-ipv6.ellefsen.ninja"]
+
+#[subdomain."dynamic.ipv6.ellefsen.ninja"]
+#response_type = "Dynamic"
+#prefix = "2600:70ff:e861:1::"
+#mask = 64
+
+#[static."a.dynamic.ipv6.ellefsen.ninja"]
+#prefix = "2600:70ff:e861:1::100"

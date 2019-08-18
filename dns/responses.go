@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"bitbucket.org/titan098/go-dns/config"
+	"github.com/titan098/go-dns/config"
 	"github.com/miekg/dns"
 )
 
