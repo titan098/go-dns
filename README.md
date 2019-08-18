@@ -68,7 +68,7 @@ The `dns.domain` section contain the top-level response for this domain prefix. 
 | Option        | Description                            |
 |---------------|----------------------------------------|
 | prefix        | The IPv6 prefix for the reverse lookup |
-| mask          | The mask for the prefix                |
+| comain        | The top-level domain being managed     |
 | response_type | The response type for this subdomain   |
 | mask          | The network mask                       |
 
@@ -101,7 +101,6 @@ The `subdomain` section contains the defintions of the prefix and the domain nam
 | Option        | Description                            |
 |---------------|----------------------------------------|
 | prefix        | The IPv6 prefix for the reverse lookup |
-| mask          | The mask for the prefix                |
 | response_type | The response type for this subdomain   |
 | mask          | The network mask                       |
 
@@ -234,7 +233,7 @@ a.dynamic.ipv6.example.com. 3600 IN	AAAA	2001:db8:1:1::100
 
 ## Running
 
-Running `go-dns` is as simple as follows:
+Running `go-dns` is as simple as running:
 
 ```
 $ ./go-dns -c <config_file>

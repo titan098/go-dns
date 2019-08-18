@@ -18,8 +18,8 @@ parts:
 
 apps:
   go-dns:
-    # daemon: simple
-    # restart-condition: always
+    daemon: simple
+    restart-condition: always
     plugs:
       - network
     command: go-dns

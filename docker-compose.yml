@@ -3,5 +3,5 @@ services:
   dns:
     build: .
     ports:
-      - 53:53/udp
+      - 15353:15353/udp
     restart: always
