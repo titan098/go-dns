@@ -4,17 +4,18 @@ summary: A simple dynamic DNS server for dynamic IPv6 addresses
 description: |
   A simple dynamic DNS server that create dynamic dns names for IPV6 addresses
   based on the address itself.
+grade: devel
+base: core22
 
 confinement: strict
-grade: devel
-base: core18
 
 parts:
   go-dns:
     plugin: go
-    go-importpath: github.com/titan098/go-dns
     source: .
     source-type: local
+    build-snaps:
+      - go
 
 apps:
   go-dns:
