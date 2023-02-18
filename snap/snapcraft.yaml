@@ -1,21 +1,11 @@
 name: go-dns
 version: git
 summary: A simple dynamic DNS server for dynamic IPv6 addresses
-description: |
-  A simple dynamic DNS server that create dynamic dns names for IPV6 addresses
-  based on the address itself.
+description: A simple dynamic DNS server that create dynamic dns names for IPV6 addresses based on the address itself.
 grade: devel
 base: core22
 
 confinement: strict
-
-parts:
-  go-dns:
-    plugin: go
-    source: .
-    source-type: local
-    build-snaps:
-      - go
 
 apps:
   go-dns:
@@ -23,4 +13,12 @@ apps:
     restart-condition: always
     plugs:
       - network
-    command: go-dns
+    command: bin/go-dns
+
+parts:
+  go-dns:
+    plugin: go
+    source-type: git
+    source: https://github.com/titan098/go-dns
+    build-snaps:
+      - go
